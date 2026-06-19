@@ -1,0 +1,91 @@
+{
+  "title": "Credential Phishing Response",
+  "description": "Response playbook for a reported or detected credential-harvesting phishing campaign targeting employee mailboxes. Triggered by a user report, a mail-gateway alert, or a flagged sign-in anomaly.",
+  "author": "Cognis Digital",
+  "version": "1.0.0",
+  "tactics": ["TA0001", "TA0006", "TA0009"],
+  "phases": [
+    {
+      "name": "Preparation",
+      "steps": [
+        {
+          "id": "prep-1",
+          "name": "Confirm reporting channels are live",
+          "description": "Verify the phishing-report button and the abuse mailbox both route to the response queue, and that on-call analysts are paged."
+        },
+        {
+          "id": "prep-2",
+          "name": "Stage takedown and reset tooling",
+          "description": "Confirm access to the mail-gateway quarantine console, the identity provider's session-revocation API, and the password-reset workflow."
+        }
+      ]
+    },
+    {
+      "name": "Detection",
+      "steps": [
+        {
+          "id": "det-1",
+          "name": "Triage the reported message",
+          "description": "Extract sender, reply-to, links, and attachments from the reported sample and detonate links in a sandbox.",
+          "techniques": ["T1566.002"],
+          "detection": "Mail-gateway logs for the sending domain plus any URL-click telemetry from the secure web gateway."
+        },
+        {
+          "id": "det-2",
+          "name": "Hunt for credential entry",
+          "description": "Determine whether any recipient submitted credentials to the harvesting page.",
+          "techniques": ["T1056.003", "T1078"],
+          "detection": "Correlate proxy logs for the phishing URL with identity-provider sign-in events from new locations or impossible-travel patterns."
+        }
+      ]
+    },
+    {
+      "name": "Containment",
+      "steps": [
+        {
+          "id": "con-1",
+          "name": "Quarantine matching messages tenant-wide",
+          "techniques": ["T1566.002"],
+          "response": "Purge all copies of the campaign from mailboxes using the sender, subject, and URL indicators; block the sending domain at the gateway."
+        },
+        {
+          "id": "con-2",
+          "name": "Revoke active sessions for exposed accounts",
+          "techniques": ["T1078"],
+          "response": "Force sign-out and revoke refresh tokens for any account that submitted credentials, then require step-up authentication."
+        }
+      ]
+    },
+    {
+      "name": "Eradication",
+      "steps": [
+        {
+          "id": "era-1",
+          "name": "Reset compromised credentials",
+          "techniques": ["T1078"],
+          "response": "Reset passwords for affected accounts and rotate any application secrets the accounts could reach."
+        }
+      ]
+    },
+    {
+      "name": "Recovery",
+      "steps": [
+        {
+          "id": "rec-1",
+          "name": "Restore normal access and monitor",
+          "response": "Re-enable affected accounts after reset, then watch sign-in and mailbox-rule telemetry for recurrence over the next several days."
+        }
+      ]
+    },
+    {
+      "name": "Lessons-Learned",
+      "steps": [
+        {
+          "id": "ll-1",
+          "name": "Tune detections and brief staff",
+          "description": "Add the campaign indicators to blocklists, refine the impossible-travel rule, and share a short awareness note with employees."
+        }
+      ]
+    }
+  ]
+}

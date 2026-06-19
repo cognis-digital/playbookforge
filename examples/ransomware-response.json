@@ -1,0 +1,101 @@
+{
+  "title": "Ransomware Incident Response",
+  "description": "Response playbook for a suspected or confirmed ransomware event on endpoints or servers, where files are being encrypted or a ransom note has appeared. Prioritizes isolation and evidence preservation over hasty cleanup.",
+  "author": "Cognis Digital",
+  "version": "1.0.0",
+  "tactics": ["TA0008", "TA0040", "TA0005"],
+  "phases": [
+    {
+      "name": "Preparation",
+      "steps": [
+        {
+          "id": "prep-1",
+          "name": "Verify offline backups are recoverable",
+          "description": "Confirm that immutable or offline backups exist for critical systems and that a recent restore has been test-validated."
+        },
+        {
+          "id": "prep-2",
+          "name": "Pre-authorize network isolation",
+          "description": "Document who may approve segment-level isolation and ensure the response team can reach switch and firewall consoles out-of-band."
+        }
+      ]
+    },
+    {
+      "name": "Detection",
+      "steps": [
+        {
+          "id": "det-1",
+          "name": "Confirm encryption activity",
+          "description": "Validate that mass file modification or a ransom note is genuine and not a false alarm.",
+          "techniques": ["T1486"],
+          "detection": "Endpoint telemetry showing rapid file renames or extension changes, plus alerts on canary files in monitored shares."
+        },
+        {
+          "id": "det-2",
+          "name": "Scope lateral movement",
+          "description": "Identify how the actor spread between hosts to bound the affected set.",
+          "techniques": ["T1021.002", "T1570"],
+          "detection": "Authentication logs for unusual administrative logons and SMB sessions between workstations that do not normally communicate."
+        }
+      ]
+    },
+    {
+      "name": "Containment",
+      "steps": [
+        {
+          "id": "con-1",
+          "name": "Isolate affected hosts",
+          "techniques": ["T1486"],
+          "response": "Network-isolate encrypting hosts immediately while keeping them powered on to preserve volatile evidence; do not wipe."
+        },
+        {
+          "id": "con-2",
+          "name": "Disable abused accounts and shares",
+          "techniques": ["T1021.002"],
+          "response": "Disable the compromised service or admin accounts and remove the share permissions the actor used to traverse."
+        }
+      ]
+    },
+    {
+      "name": "Eradication",
+      "steps": [
+        {
+          "id": "era-1",
+          "name": "Remove persistence and tooling",
+          "techniques": ["T1547"],
+          "response": "Identify and remove the actor's persistence mechanisms and dropped tooling from all affected hosts before rebuild."
+        },
+        {
+          "id": "era-2",
+          "name": "Rebuild compromised systems",
+          "response": "Reimage affected endpoints and servers from known-good media rather than attempting in-place cleanup."
+        }
+      ]
+    },
+    {
+      "name": "Recovery",
+      "steps": [
+        {
+          "id": "rec-1",
+          "name": "Restore from validated backups",
+          "response": "Restore data from verified clean backups onto rebuilt systems, restoring the most critical business services first."
+        },
+        {
+          "id": "rec-2",
+          "name": "Monitor for reinfection",
+          "response": "Watch restored systems closely for re-encryption attempts or returning indicators before declaring the incident closed."
+        }
+      ]
+    },
+    {
+      "name": "Lessons-Learned",
+      "steps": [
+        {
+          "id": "ll-1",
+          "name": "Document timeline and close gaps",
+          "description": "Reconstruct the intrusion timeline, record the initial access vector, and prioritize the control gaps that allowed spread."
+        }
+      ]
+    }
+  ]
+}
