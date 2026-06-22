@@ -1,0 +1,23 @@
+{
+  "title": "",
+  "description": "A deliberately flawed draft used to demonstrate the linter and the CI gate. It is missing a title, has an invalid technique ID, an empty phase, a non-standard phase name, a detection step with no detection guidance, and several missing standard phases.",
+  "author": "Cognis Digital",
+  "version": "0.0.1",
+  "tactics": ["TA0001", "BOGUS"],
+  "phases": [
+    {
+      "name": "Detection",
+      "steps": [
+        {
+          "id": "det-1",
+          "name": "Look at the alert",
+          "techniques": ["T1566.002", "NOTATECHNIQUE"]
+        }
+      ]
+    },
+    {
+      "name": "Triage",
+      "steps": []
+    }
+  ]
+}

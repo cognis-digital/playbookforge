@@ -1,0 +1,91 @@
+{
+  "title": "MFA Fatigue / Push-Bombing Account Takeover",
+  "description": "Response playbook for an identity attack where an actor with valid credentials repeatedly triggers MFA push prompts (push-bombing / MFA fatigue) until a user approves one, granting session access to a SaaS identity provider. Triggered by a user reporting unexpected push prompts or by a spike in denied MFA challenges followed by an approval.",
+  "author": "Cognis Digital",
+  "version": "1.0.0",
+  "tactics": ["TA0006", "TA0001", "TA0005"],
+  "phases": [
+    {
+      "name": "Preparation",
+      "steps": [
+        {
+          "id": "prep-1",
+          "name": "Prefer phishing-resistant MFA and number matching",
+          "description": "Where push MFA is still in use, enable number matching and additional context; document which user populations are eligible for FIDO2/WebAuthn enrollment."
+        },
+        {
+          "id": "prep-2",
+          "name": "Ensure session-revocation access",
+          "description": "Confirm the IR team can revoke sessions and reset factors in the identity provider, and that admin actions are themselves protected by phishing-resistant MFA."
+        }
+      ]
+    },
+    {
+      "name": "Detection",
+      "steps": [
+        {
+          "id": "det-1",
+          "name": "Confirm the push-bombing pattern",
+          "description": "Validate that the user received a burst of MFA prompts they did not initiate and identify whether any prompt was approved.",
+          "techniques": ["T1621", "T1078.004"],
+          "detection": "Identity-provider logs showing many MFA challenges to one account in a short window, often from a foreign ASN, ending in an approval and a successful sign-in."
+        },
+        {
+          "id": "det-2",
+          "name": "Scope post-authentication activity",
+          "description": "Determine what the actor did after the approved prompt: app access, data views, or persistence changes.",
+          "techniques": ["T1098.005", "T1556.006"],
+          "detection": "Audit logs for new MFA factor enrollment, changes to recovery email/phone, and OAuth grants made shortly after the suspicious sign-in."
+        }
+      ]
+    },
+    {
+      "name": "Containment",
+      "steps": [
+        {
+          "id": "con-1",
+          "name": "Revoke sessions and challenge the account",
+          "techniques": ["T1078.004"],
+          "response": "Revoke all active sessions and refresh tokens for the account, force re-authentication, and temporarily suspend the account if takeover is confirmed."
+        },
+        {
+          "id": "con-2",
+          "name": "Remove attacker-controlled factors",
+          "techniques": ["T1556.006"],
+          "response": "Remove any MFA factor, recovery contact, or app password the actor enrolled, then re-enroll the user on a phishing-resistant factor."
+        }
+      ]
+    },
+    {
+      "name": "Eradication",
+      "steps": [
+        {
+          "id": "era-1",
+          "name": "Reset credentials and revoke grants",
+          "techniques": ["T1098.005"],
+          "response": "Reset the password, rotate any API tokens the account could create, and revoke OAuth application grants the actor authorized."
+        }
+      ]
+    },
+    {
+      "name": "Recovery",
+      "steps": [
+        {
+          "id": "rec-1",
+          "name": "Re-enable under monitoring",
+          "response": "Restore the user's access after factor re-enrollment and watch sign-in, factor-change, and grant telemetry for the account over the following days."
+        }
+      ]
+    },
+    {
+      "name": "Lessons-Learned",
+      "steps": [
+        {
+          "id": "ll-1",
+          "name": "Drive out push fatigue as a class",
+          "description": "Accelerate phishing-resistant MFA rollout for high-risk roles, add a detection for MFA-prompt bursts, and brief users to deny and report unexpected prompts."
+        }
+      ]
+    }
+  ]
+}

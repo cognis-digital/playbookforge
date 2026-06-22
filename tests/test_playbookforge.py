@@ -316,3 +316,156 @@ def test_cli_coverage_json(capsys):
 def test_cli_missing_file_returns_two(capsys):
     rc = main(["lint", "does-not-exist.json"])
     assert rc == 2
+
+
+# --------------------------------------------------------------------------- #
+# Demos: every shipped demo playbook must behave as documented
+# --------------------------------------------------------------------------- #
+
+DEMOS = pathlib.Path(__file__).resolve().parent.parent / "demos"
+
+CLEAN_DEMOS = [
+    "01-bec-wire-fraud",
+    "02-okta-mfa-fatigue",
+    "03-aws-s3-exfil",
+    "04-malicious-oauth-grant",
+    "05-linux-cryptominer",
+    "06-ci-supply-chain",
+    "07-data-exfil-insider",
+]
+
+
+@pytest.mark.parametrize("demo", CLEAN_DEMOS)
+def test_clean_demos_lint_strict_clean(demo):
+    pb = parse_playbook((DEMOS / demo / "playbook.json").read_text(encoding="utf-8"))
+    findings = lint(pb)
+    # No errors AND no warnings -> survives `lint --strict`.
+    assert not findings, [str(f) for f in findings]
+
+
+@pytest.mark.parametrize("demo", CLEAN_DEMOS)
+def test_clean_demos_render_and_have_techniques(demo):
+    pb = parse_playbook((DEMOS / demo / "playbook.json").read_text(encoding="utf-8"))
+    md = render_markdown(pb)
+    assert md.startswith("# ")
+    assert "## ATT&CK Coverage" in md
+    assert pb.all_techniques(), "demo should reference at least one technique"
+    # every technique ID in the demo is a well-formed ATT&CK ID
+    for tech in pb.all_techniques():
+        assert is_valid_technique(tech), tech
+
+
+@pytest.mark.parametrize("demo", CLEAN_DEMOS)
+def test_clean_demos_have_all_standard_phases(demo):
+    pb = parse_playbook((DEMOS / demo / "playbook.json").read_text(encoding="utf-8"))
+    assert [p.name for p in pb.phases] == IR_PHASES
+
+
+def test_broken_demo_lints_with_errors():
+    pb = parse_playbook(
+        (DEMOS / "08-broken-playbook-cigate" / "playbook.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    findings = lint(pb)
+    assert has_errors(findings)
+    codes = {f.code for f in findings}
+    # the documented findings are all present
+    assert {"PB001", "PB010", "PB031"} <= codes
+
+
+def test_cli_lint_broken_demo_returns_nonzero():
+    rc = main(["lint", str(DEMOS / "08-broken-playbook-cigate" / "playbook.json")])
+    assert rc == 1
+
+
+# --------------------------------------------------------------------------- #
+# SARIF 2.1.0 export
+# --------------------------------------------------------------------------- #
+
+from playbookforge.sarif import to_sarif, render_sarif, SARIF_VERSION  # noqa: E402
+from playbookforge.lint import Finding, SEVERITY_ERROR, SEVERITY_WARNING  # noqa: E402
+
+
+def _broken_pb():
+    return parse_playbook(
+        '{"title": "", "tactics": ["BOGUS"], "phases": [{"name": "Detection",'
+        ' "steps": [{"name": "s", "techniques": ["XXX"]}]}]}'
+    )
+
+
+def test_sarif_top_level_shape():
+    findings = lint(_broken_pb())
+    doc = to_sarif(findings)
+    assert doc["version"] == SARIF_VERSION == "2.1.0"
+    assert "$schema" in doc
+    assert len(doc["runs"]) == 1
+    driver = doc["runs"][0]["tool"]["driver"]
+    assert driver["name"] == "playbookforge"
+    assert driver["version"]
+
+
+def test_sarif_results_and_rules_match_findings():
+    findings = lint(_broken_pb())
+    doc = to_sarif(findings)
+    run = doc["runs"][0]
+    assert len(run["results"]) == len(findings)
+    # every result's ruleId has a matching rule descriptor
+    rule_ids = {r["id"] for r in run["tool"]["driver"]["rules"]}
+    for res in run["results"]:
+        assert res["ruleId"] in rule_ids
+        assert res["level"] in ("error", "warning", "note")
+        assert res["message"]["text"]
+
+
+def test_sarif_severity_levels_mapped():
+    findings = [
+        Finding(SEVERITY_ERROR, "PB001", "missing title"),
+        Finding(SEVERITY_WARNING, "PB022", "empty phase", location="phase:X"),
+    ]
+    doc = to_sarif(findings)
+    levels = [r["level"] for r in doc["runs"][0]["results"]]
+    assert levels == ["error", "warning"]
+    # warning carried its playbook location into properties
+    warn = doc["runs"][0]["results"][1]
+    assert warn["properties"]["playbookLocation"] == "phase:X"
+
+
+def test_sarif_artifact_uri_attached():
+    findings = lint(_broken_pb())
+    doc = to_sarif(findings, artifact_uri="path/to/playbook.json")
+    loc = doc["runs"][0]["results"][0]["locations"][0]
+    assert loc["physicalLocation"]["artifactLocation"]["uri"] == "path/to/playbook.json"
+
+
+def test_render_sarif_is_valid_json():
+    findings = lint(_broken_pb())
+    text = render_sarif(findings)
+    again = json.loads(text)
+    assert again["version"] == "2.1.0"
+
+
+def test_cli_lint_sarif_to_stdout(capsys):
+    rc = main(["lint", str(DEMOS / "08-broken-playbook-cigate" / "playbook.json"),
+               "--sarif"])
+    assert rc == 1  # still fails the gate
+    doc = json.loads(capsys.readouterr().out)
+    assert doc["version"] == "2.1.0"
+    assert doc["runs"][0]["results"]
+
+
+def test_cli_lint_sarif_clean_playbook_exits_zero(capsys):
+    rc = main(["lint", str(EXAMPLES / "phishing-response.json"), "--sarif"])
+    assert rc == 0
+    doc = json.loads(capsys.readouterr().out)
+    assert doc["version"] == "2.1.0"
+    assert doc["runs"][0]["results"] == []
+
+
+def test_cli_lint_sarif_to_file(tmp_path):
+    out = tmp_path / "out.sarif"
+    rc = main(["lint", str(DEMOS / "08-broken-playbook-cigate" / "playbook.json"),
+               "--sarif", "-o", str(out)])
+    assert rc == 1
+    doc = json.loads(out.read_text(encoding="utf-8"))
+    assert doc["version"] == "2.1.0"

@@ -1,0 +1,91 @@
+{
+  "title": "Business Email Compromise - Wire Fraud Attempt",
+  "description": "Response playbook for a Business Email Compromise (BEC) where a finance employee receives a payment-redirection request appearing to come from an executive or a known vendor. Triggered when accounts payable flags an unusual change-of-bank-details request or a near-miss / completed fraudulent wire is reported.",
+  "author": "Cognis Digital",
+  "version": "1.0.0",
+  "tactics": ["TA0001", "TA0006", "TA0009"],
+  "phases": [
+    {
+      "name": "Preparation",
+      "steps": [
+        {
+          "id": "prep-1",
+          "name": "Maintain an out-of-band payment-verification policy",
+          "description": "Ensure accounts payable has a documented callback procedure (using a phone number on file, not one from the email) for any change to vendor banking details or any wire above a threshold."
+        },
+        {
+          "id": "prep-2",
+          "name": "Pre-stage bank and registrar contacts",
+          "description": "Keep current contacts for the corporate bank's fraud desk and the registrar/host for likely look-alike domains so a recall or takedown can start within the recall window."
+        }
+      ]
+    },
+    {
+      "name": "Detection",
+      "steps": [
+        {
+          "id": "det-1",
+          "name": "Triage the suspicious payment request",
+          "description": "Examine the requesting message for a look-alike or display-name-spoofed sender, an altered reply-to, and pressure language demanding urgency or secrecy.",
+          "techniques": ["T1566.002", "T1534"],
+          "detection": "Mail-gateway logs for the sender domain age and SPF/DKIM/DMARC results; flag external senders whose display name matches an internal executive."
+        },
+        {
+          "id": "det-2",
+          "name": "Check for mailbox takeover of the real account",
+          "description": "Determine whether the legitimate executive or vendor mailbox was accessed by the actor rather than merely spoofed.",
+          "techniques": ["T1078", "T1114.002"],
+          "detection": "Identity-provider sign-in logs for impossible-travel or new-ASN logons, plus inbox rules that auto-delete or forward replies to hide the conversation."
+        }
+      ]
+    },
+    {
+      "name": "Containment",
+      "steps": [
+        {
+          "id": "con-1",
+          "name": "Halt and attempt recall of the wire",
+          "techniques": ["T1657"],
+          "response": "If a payment was sent, immediately call the bank fraud desk to request a recall/SWIFT recall and file the kill-chain timeline; freeze any further scheduled payments to the new account."
+        },
+        {
+          "id": "con-2",
+          "name": "Lock down a compromised mailbox",
+          "techniques": ["T1078"],
+          "response": "If the real mailbox was taken over, revoke sessions and refresh tokens, reset the password, and remove any hidden forwarding or delete rules the actor created."
+        }
+      ]
+    },
+    {
+      "name": "Eradication",
+      "steps": [
+        {
+          "id": "era-1",
+          "name": "Remove actor footholds and block infrastructure",
+          "techniques": ["T1566.002"],
+          "response": "Block the look-alike domain and sender at the gateway, purge all campaign copies tenant-wide, and revoke any OAuth grants the actor added."
+        }
+      ]
+    },
+    {
+      "name": "Recovery",
+      "steps": [
+        {
+          "id": "rec-1",
+          "name": "Restore normal finance operations under heightened review",
+          "response": "Resume payments only after re-verifying vendor banking details out-of-band; apply temporary dual-approval on all wires for the affected vendor for a defined period."
+        }
+      ]
+    },
+    {
+      "name": "Lessons-Learned",
+      "steps": [
+        {
+          "id": "ll-1",
+          "name": "Report, reconcile, and tune controls",
+          "description": "File the IC3/law-enforcement report if funds left, reconcile the loss, add the indicators to blocklists, and reinforce the callback policy with the finance team."
+        }
+      ]
+    }
+  ]
+}

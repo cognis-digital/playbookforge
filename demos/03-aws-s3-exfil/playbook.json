@@ -1,0 +1,91 @@
+{
+  "title": "AWS Access-Key Compromise and S3 Data Exfiltration",
+  "description": "Response playbook for a leaked or stolen AWS IAM access key used to enumerate the account and exfiltrate data from S3. Triggered by a public-key-exposure alert (e.g. a key committed to a repo), a GuardDuty finding, or an anomalous CloudTrail spike in S3 read/list activity.",
+  "author": "Cognis Digital",
+  "version": "1.0.0",
+  "tactics": ["TA0001", "TA0007", "TA0009", "TA0010"],
+  "phases": [
+    {
+      "name": "Preparation",
+      "steps": [
+        {
+          "id": "prep-1",
+          "name": "Ensure CloudTrail and detective controls are on",
+          "description": "Confirm CloudTrail (management and S3 data events) is enabled org-wide and immutable, and that GuardDuty and key-exposure scanning are active."
+        },
+        {
+          "id": "prep-2",
+          "name": "Pre-authorize key disablement",
+          "description": "Document who may disable IAM keys and detach policies under incident conditions, and keep a break-glass admin path that does not depend on the suspect credential."
+        }
+      ]
+    },
+    {
+      "name": "Detection",
+      "steps": [
+        {
+          "id": "det-1",
+          "name": "Confirm the credential is in hostile use",
+          "description": "Verify the access key is being used from unexpected source IPs/regions and identify the IAM principal it belongs to.",
+          "techniques": ["T1078.004", "T1552.001"],
+          "detection": "CloudTrail events for the access key ID from new source IPs or user agents; correlate against the exposure alert timestamp."
+        },
+        {
+          "id": "det-2",
+          "name": "Scope enumeration and data access",
+          "description": "Determine what the actor listed and read to bound the exposure.",
+          "techniques": ["T1580", "T1530", "T1537"],
+          "detection": "CloudTrail/S3 data events for ListBuckets, GetObject volume spikes, and any CopyObject to an external or attacker-owned bucket."
+        }
+      ]
+    },
+    {
+      "name": "Containment",
+      "steps": [
+        {
+          "id": "con-1",
+          "name": "Disable the compromised key immediately",
+          "techniques": ["T1078.004"],
+          "response": "Set the access key to Inactive (do not delete yet, to preserve attribution), and attach an explicit deny policy to the principal if it is a role."
+        },
+        {
+          "id": "con-2",
+          "name": "Block exfiltration paths",
+          "techniques": ["T1537"],
+          "response": "Tighten bucket policies and block public/cross-account access on affected buckets; revoke any presigned URLs and quarantine suspicious destination buckets."
+        }
+      ]
+    },
+    {
+      "name": "Eradication",
+      "steps": [
+        {
+          "id": "era-1",
+          "name": "Remove actor persistence in IAM",
+          "techniques": ["T1098.001"],
+          "response": "Audit for IAM users, keys, roles, or policy attachments the actor created, remove them, and rotate any other secrets the principal could reach."
+        }
+      ]
+    },
+    {
+      "name": "Recovery",
+      "steps": [
+        {
+          "id": "rec-1",
+          "name": "Reissue credentials and restore least privilege",
+          "response": "Issue new, least-privilege credentials for the legitimate workload, prefer short-lived role credentials over long-lived keys, and confirm services recover."
+        }
+      ]
+    },
+    {
+      "name": "Lessons-Learned",
+      "steps": [
+        {
+          "id": "ll-1",
+          "name": "Close the exposure class",
+          "description": "Trace how the key leaked (repo, log, CI variable), add secret scanning to that path, and move the workload to short-lived credentials to prevent recurrence."
+        }
+      ]
+    }
+  ]
+}

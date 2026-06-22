@@ -78,6 +78,30 @@ WARNING: PB022 [phase:Containment] phase has no steps
 
 Add `--strict` to also fail on warnings.
 
+#### SARIF 2.1.0 output (GitHub code scanning)
+
+Emit lint findings as [SARIF 2.1.0](https://sarifweb.azurewebsites.net/) so they
+show up as annotations on a pull request:
+
+```bash
+playbookforge lint examples/phishing-response.json --sarif -o playbook-lint.sarif
+```
+
+The command still exits non-zero on errors, so it doubles as both a hard gate
+and a results file. In a GitHub Actions workflow:
+
+```yaml
+- run: playbookforge lint playbooks/*.json --sarif -o playbook-lint.sarif
+  continue-on-error: true
+- uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: playbook-lint.sarif
+```
+
+Each lint rule (`PB001`-`PB040`) is emitted as a SARIF rule descriptor with a
+short description, and each finding becomes a result with the matching severity
+level and the playbook path attached.
+
 ### Scaffold a new playbook
 
 ```bash
@@ -154,11 +178,39 @@ A playbook is a JSON (or, with the `yaml` extra, YAML) object:
 
 See `examples/` for full phishing-response and ransomware-response playbooks.
 
+## Demos
+
+The `demos/` directory holds varied, real-use-case playbooks. Each demo is a
+folder with a `playbook.json` in the real input format plus a `SCENARIO.md`
+describing where the data came from, what to expect, the exact command to run,
+and how to act. Demos 01-07 lint clean (including `--strict`); demo 08 is
+deliberately broken to show the CI gate and SARIF output.
+
+| Demo | Scenario | Notable ATT&CK |
+| --- | --- | --- |
+| `01-bec-wire-fraud` | Business email compromise / payment redirection | `T1566.002`, `T1657`, `T1114.002` |
+| `02-okta-mfa-fatigue` | MFA fatigue / push-bombing account takeover | `T1621`, `T1078.004`, `T1556.006` |
+| `03-aws-s3-exfil` | Leaked AWS key -> S3 data exfiltration | `T1552.001`, `T1530`, `T1537` |
+| `04-malicious-oauth-grant` | Illicit consent grant (malicious OAuth app) | `T1528`, `T1098.003` |
+| `05-linux-cryptominer` | Cryptojacking on an exposed Linux server | `T1496`, `T1190`, `T1053.003` |
+| `06-ci-supply-chain` | Poisoned dependency in CI/CD | `T1195.002`, `T1552.001`, `T1567` |
+| `07-data-exfil-insider` | Departing-insider data exfiltration (authorized) | `T1530`, `T1052.001`, `T1567.002` |
+| `08-broken-playbook-cigate` | A flawed draft that fails the lint gate | (intentionally invalid) |
+
+```bash
+# Render any demo to a runbook
+playbookforge render demos/02-okta-mfa-fatigue/playbook.json --format md
+
+# The broken demo fails the gate (exit 1) and can emit SARIF
+playbookforge lint demos/08-broken-playbook-cigate/playbook.json --sarif -o lint.sarif
+```
+
 ## Features
 
 - Markdown renderer with an ATT&CK coverage summary table and technique badges
 - Canonical JSON renderer (round-trips cleanly)
 - Linter with technique-ID regex validation, required-field checks, and phase-coverage warnings; non-zero exit on errors for CI
+- SARIF 2.1.0 lint export for GitHub code scanning and security dashboards
 - `new` scaffolder for starter playbooks
 - `coverage` extractor for referenced tactics and techniques
 - Built-in list of the 14 enterprise ATT&CK tactics for labeling and validation

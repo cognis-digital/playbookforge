@@ -1,0 +1,91 @@
+{
+  "title": "Departing-Insider Data Exfiltration",
+  "description": "Response playbook for a departing or disgruntled insider exfiltrating sensitive data ahead of resignation or termination. Authorized investigation only, conducted with HR and Legal. Triggered by a DLP alert, an HR notice of a high-risk departure, or anomalous bulk downloads to removable media or personal cloud storage.",
+  "author": "Cognis Digital",
+  "version": "1.0.0",
+  "tactics": ["TA0009", "TA0010"],
+  "phases": [
+    {
+      "name": "Preparation",
+      "steps": [
+        {
+          "id": "prep-1",
+          "name": "Align an HR/Legal-coordinated process",
+          "description": "Maintain a documented, privacy-respecting process for high-risk-departure reviews that is run jointly with HR and Legal under defined authorization."
+        },
+        {
+          "id": "prep-2",
+          "name": "Ensure DLP and access visibility",
+          "description": "Confirm DLP coverage for email, endpoint, removable media, and sanctioned cloud apps, and that access to sensitive repositories is logged."
+        }
+      ]
+    },
+    {
+      "name": "Detection",
+      "steps": [
+        {
+          "id": "det-1",
+          "name": "Confirm anomalous data movement",
+          "description": "Validate the alert: unusual bulk access or copying of sensitive files relative to the user's normal role and recent baseline.",
+          "techniques": ["T1530", "T1213"],
+          "detection": "DLP and access logs for spikes in downloads from document stores, mass file opens, or access to repositories outside the user's normal scope."
+        },
+        {
+          "id": "det-2",
+          "name": "Identify the exfiltration channel",
+          "description": "Determine how data is leaving: removable media, personal webmail, or unsanctioned cloud sync.",
+          "techniques": ["T1052.001", "T1567.002"],
+          "detection": "Endpoint logs for USB mass-storage writes, uploads to personal cloud or webmail, and large outbound transfers to non-corporate destinations."
+        }
+      ]
+    },
+    {
+      "name": "Containment",
+      "steps": [
+        {
+          "id": "con-1",
+          "name": "Constrain access proportionately",
+          "techniques": ["T1530"],
+          "response": "With HR/Legal approval, reduce the user's access to sensitive data, block the identified exfiltration channel (e.g. disable USB write, block the personal-cloud domain), and preserve evidence."
+        },
+        {
+          "id": "con-2",
+          "name": "Preserve evidence and chain of custody",
+          "techniques": ["T1052.001"],
+          "response": "Capture endpoint, DLP, and access logs and any media images under documented chain of custody before the user departs or is notified."
+        }
+      ]
+    },
+    {
+      "name": "Eradication",
+      "steps": [
+        {
+          "id": "era-1",
+          "name": "Revoke access on separation",
+          "techniques": ["T1078"],
+          "response": "On the agreed timeline, disable accounts, revoke tokens and device access, and recover corporate devices and removable media."
+        }
+      ]
+    },
+    {
+      "name": "Recovery",
+      "steps": [
+        {
+          "id": "rec-1",
+          "name": "Assess impact and remediate exposure",
+          "response": "Determine what data left, whether notification obligations apply, and remediate exposure (e.g. rotate any secrets in copied files) with Legal guidance."
+        }
+      ]
+    },
+    {
+      "name": "Lessons-Learned",
+      "steps": [
+        {
+          "id": "ll-1",
+          "name": "Improve the departure-risk program",
+          "description": "Refine DLP rules for the observed channel, tighten just-in-time access for sensitive stores, and review the offboarding checklist with HR."
+        }
+      ]
+    }
+  ]
+}

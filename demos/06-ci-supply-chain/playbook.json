@@ -1,0 +1,91 @@
+{
+  "title": "CI/CD Supply-Chain Compromise (Poisoned Dependency)",
+  "description": "Response playbook for a software supply-chain incident where a malicious or compromised third-party package is pulled into the build, executing attacker code in the CI pipeline and exfiltrating build secrets. Triggered by a dependency-confusion/typosquat alert, an unexpected outbound connection from a build runner, or a disclosed compromise of an upstream package.",
+  "author": "Cognis Digital",
+  "version": "1.0.0",
+  "tactics": ["TA0001", "TA0002", "TA0006", "TA0010"],
+  "phases": [
+    {
+      "name": "Preparation",
+      "steps": [
+        {
+          "id": "prep-1",
+          "name": "Pin and vet dependencies",
+          "description": "Use lockfiles with hashes, an internal package mirror/allowlist, and scoped registries to reduce dependency-confusion and typosquat risk."
+        },
+        {
+          "id": "prep-2",
+          "name": "Constrain and monitor build runners",
+          "description": "Give CI runners least-privilege, short-lived credentials and restrict their egress so an injected step cannot freely call out or reach production."
+        }
+      ]
+    },
+    {
+      "name": "Detection",
+      "steps": [
+        {
+          "id": "det-1",
+          "name": "Identify the malicious package and build",
+          "description": "Pinpoint which dependency, version, and pipeline run introduced the malicious code.",
+          "techniques": ["T1195.002", "T1059"],
+          "detection": "Build logs and lockfile diffs for an unexpected new/changed dependency; CI runner egress logs showing connections to an unfamiliar host during install or build."
+        },
+        {
+          "id": "det-2",
+          "name": "Scope what secrets and artifacts were exposed",
+          "description": "Determine which CI secrets and signing keys the compromised step could read and whether any published artifact is tainted.",
+          "techniques": ["T1552.001", "T1567"],
+          "detection": "Audit which environment variables/secrets were available to the build, and check artifact registries for anything published from the affected runs."
+        }
+      ]
+    },
+    {
+      "name": "Containment",
+      "steps": [
+        {
+          "id": "con-1",
+          "name": "Freeze the pipeline and quarantine artifacts",
+          "techniques": ["T1195.002"],
+          "response": "Pause affected pipelines, remove or pin away from the malicious package version, and quarantine any artifacts built from compromised runs to stop downstream spread."
+        },
+        {
+          "id": "con-2",
+          "name": "Revoke exposed secrets",
+          "techniques": ["T1552.001"],
+          "response": "Rotate every credential, token, and signing key the compromised build could access, treating all of them as exposed regardless of confirmation."
+        }
+      ]
+    },
+    {
+      "name": "Eradication",
+      "steps": [
+        {
+          "id": "era-1",
+          "name": "Remove the tainted code path",
+          "techniques": ["T1195.002"],
+          "response": "Replace the poisoned dependency with a vetted version from a trusted source, rebuild from clean inputs, and verify the lockfile hashes."
+        }
+      ]
+    },
+    {
+      "name": "Recovery",
+      "steps": [
+        {
+          "id": "rec-1",
+          "name": "Re-release clean artifacts",
+          "response": "Rebuild and re-sign artifacts with rotated keys, publish clean versions, and notify any downstream consumers of tainted releases."
+        }
+      ]
+    },
+    {
+      "name": "Lessons-Learned",
+      "steps": [
+        {
+          "id": "ll-1",
+          "name": "Harden the build supply chain",
+          "description": "Enforce an internal mirror/allowlist, require hash-pinned lockfiles, add SBOM and provenance checks, and tighten runner egress and secret scoping."
+        }
+      ]
+    }
+  ]
+}

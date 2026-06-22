@@ -11,6 +11,7 @@ from .attack import base_technique, tactic_name, ATTACK_TACTICS
 from .lint import lint, has_errors, SEVERITY_ERROR, SEVERITY_WARNING
 from .model import parse_playbook, PlaybookFormatError
 from .render import render_markdown, render_json
+from .sarif import render_sarif
 from .scaffold import new_playbook
 
 
@@ -46,11 +47,19 @@ def cmd_lint(args: argparse.Namespace) -> int:
     errors = [f for f in findings if f.severity == SEVERITY_ERROR]
     warnings = [f for f in findings if f.severity == SEVERITY_WARNING]
 
-    for f in findings:
-        sys.stdout.write(str(f) + "\n")
-
-    summary = f"\n{len(errors)} error(s), {len(warnings)} warning(s)"
-    sys.stdout.write(summary + "\n")
+    if args.sarif:
+        artifact = None if args.playbook == "-" else args.playbook
+        sarif = render_sarif(findings, artifact_uri=artifact)
+        if args.output:
+            with open(args.output, "w", encoding="utf-8") as fh:
+                fh.write(sarif + "\n")
+        else:
+            sys.stdout.write(sarif + "\n")
+    else:
+        for f in findings:
+            sys.stdout.write(str(f) + "\n")
+        summary = f"\n{len(errors)} error(s), {len(warnings)} warning(s)"
+        sys.stdout.write(summary + "\n")
 
     if has_errors(findings):
         return 1
@@ -131,6 +140,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_lint.add_argument("playbook", help="path to playbook file (or - for stdin)")
     p_lint.add_argument(
         "--strict", action="store_true", help="treat warnings as failures too"
+    )
+    p_lint.add_argument(
+        "--sarif",
+        action="store_true",
+        help="emit findings as SARIF 2.1.0 (for GitHub code scanning / CI)",
+    )
+    p_lint.add_argument(
+        "--output", "-o", help="write SARIF/findings to a file instead of stdout"
     )
     p_lint.set_defaults(func=cmd_lint)
 

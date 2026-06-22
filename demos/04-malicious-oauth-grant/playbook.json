@@ -1,0 +1,91 @@
+{
+  "title": "Illicit Consent Grant (Malicious OAuth Application)",
+  "description": "Response playbook for an illicit-consent-grant / consent-phishing attack, where a user is tricked into authorizing a malicious third-party OAuth application that then reads mail, files, or contacts via API without needing the password again. Triggered by a reported consent prompt, a risky-application alert, or anomalous Graph/API access from an unfamiliar app.",
+  "author": "Cognis Digital",
+  "version": "1.0.0",
+  "tactics": ["TA0001", "TA0003", "TA0009"],
+  "phases": [
+    {
+      "name": "Preparation",
+      "steps": [
+        {
+          "id": "prep-1",
+          "name": "Restrict and review app consent",
+          "description": "Configure user consent to allow only verified publishers or low-risk scopes, and enable an admin-consent request workflow so risky grants are reviewed before approval."
+        },
+        {
+          "id": "prep-2",
+          "name": "Know how to revoke grants at scale",
+          "description": "Confirm the IR team can list and revoke OAuth application grants and service principals across the tenant and can disable an enterprise application quickly."
+        }
+      ]
+    },
+    {
+      "name": "Detection",
+      "steps": [
+        {
+          "id": "det-1",
+          "name": "Identify the malicious application and its scopes",
+          "description": "Find the granted application, who consented, and which permissions (mail.read, files.read.all, offline_access) it holds.",
+          "techniques": ["T1528", "T1566.002"],
+          "detection": "Audit logs for 'Consent to application' events and enterprise-application sign-ins; flag apps requesting broad read scopes plus offline_access (refresh tokens)."
+        },
+        {
+          "id": "det-2",
+          "name": "Scope API-driven data access",
+          "description": "Determine what the app accessed using its tokens since the grant.",
+          "techniques": ["T1114.002", "T1530"],
+          "detection": "API/Graph activity logs attributed to the application's service principal: mail reads, file downloads, and mailbox-rule creation."
+        }
+      ]
+    },
+    {
+      "name": "Containment",
+      "steps": [
+        {
+          "id": "con-1",
+          "name": "Revoke the grant and tokens",
+          "techniques": ["T1528"],
+          "response": "Revoke the application's consent and delete its service principal so existing refresh tokens stop working, then disable the enterprise application tenant-wide."
+        },
+        {
+          "id": "con-2",
+          "name": "Block the app and contain affected users",
+          "techniques": ["T1098.003"],
+          "response": "Add the application ID to a block list, and for users who consented, revoke sessions and review for any inbox rules or grants the app created."
+        }
+      ]
+    },
+    {
+      "name": "Eradication",
+      "steps": [
+        {
+          "id": "era-1",
+          "name": "Remove residual access",
+          "techniques": ["T1098.003"],
+          "response": "Confirm no related service principals, app passwords, or delegated permissions remain, and rotate secrets the app could have reached."
+        }
+      ]
+    },
+    {
+      "name": "Recovery",
+      "steps": [
+        {
+          "id": "rec-1",
+          "name": "Restore normal operations",
+          "response": "Confirm legitimate applications still function, communicate the revocation to affected users, and monitor consent and enterprise-app sign-in telemetry."
+        }
+      ]
+    },
+    {
+      "name": "Lessons-Learned",
+      "steps": [
+        {
+          "id": "ll-1",
+          "name": "Harden the consent surface",
+          "description": "Tighten user-consent policy, add a detection for high-risk scope grants, and educate users that consent prompts can be as dangerous as password phishing."
+        }
+      ]
+    }
+  ]
+}

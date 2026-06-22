@@ -1,0 +1,91 @@
+{
+  "title": "Linux Server Cryptojacking via Exposed Service",
+  "description": "Response playbook for a compromised internet-facing Linux server running an unauthorized cryptominer. Triggered by sustained 100% CPU, a cloud-cost/utilization alert, outbound connections to a mining pool, or an EDR detection of a known miner. Typical entry is an exposed or vulnerable service exploited for code execution.",
+  "author": "Cognis Digital",
+  "version": "1.0.0",
+  "tactics": ["TA0001", "TA0002", "TA0003", "TA0040"],
+  "phases": [
+    {
+      "name": "Preparation",
+      "steps": [
+        {
+          "id": "prep-1",
+          "name": "Baseline normal process and network behavior",
+          "description": "Maintain an inventory of expected services per host and a baseline of normal CPU and egress so anomalous mining stands out quickly."
+        },
+        {
+          "id": "prep-2",
+          "name": "Ensure isolation and snapshot capability",
+          "description": "Confirm the team can security-group-isolate or snapshot the instance out-of-band to preserve evidence before any rebuild."
+        }
+      ]
+    },
+    {
+      "name": "Detection",
+      "steps": [
+        {
+          "id": "det-1",
+          "name": "Confirm unauthorized mining activity",
+          "description": "Validate that the high CPU is a miner and not a legitimate workload, and identify the offending process and binary.",
+          "techniques": ["T1496", "T1059.004"],
+          "detection": "Process listing for high-CPU unknown binaries, outbound connections to known mining-pool ports/domains, and EDR miner signatures."
+        },
+        {
+          "id": "det-2",
+          "name": "Find the entry vector and persistence",
+          "description": "Determine how the actor got code execution and how the miner survives reboot.",
+          "techniques": ["T1190", "T1053.003"],
+          "detection": "Web/service logs for the exploited endpoint, plus cron entries, systemd units, and modified rc/profile scripts that relaunch the miner."
+        }
+      ]
+    },
+    {
+      "name": "Containment",
+      "steps": [
+        {
+          "id": "con-1",
+          "name": "Isolate the host and block the pool",
+          "techniques": ["T1496"],
+          "response": "Network-isolate the instance (restrict security group to admin access only) and block the mining-pool domains/IPs at the egress firewall; keep the host running to preserve memory evidence."
+        },
+        {
+          "id": "con-2",
+          "name": "Suspend abused accounts and keys",
+          "techniques": ["T1078"],
+          "response": "Disable any local or cloud credentials the actor used or created on the host and rotate keys the host could reach."
+        }
+      ]
+    },
+    {
+      "name": "Eradication",
+      "steps": [
+        {
+          "id": "era-1",
+          "name": "Remove miner and persistence",
+          "techniques": ["T1053.003"],
+          "response": "Kill the miner, remove its binary, and delete the cron jobs, systemd units, or startup hooks that relaunch it; prefer rebuild over in-place cleanup if root is suspected."
+        }
+      ]
+    },
+    {
+      "name": "Recovery",
+      "steps": [
+        {
+          "id": "rec-1",
+          "name": "Rebuild and patch the entry point",
+          "response": "Redeploy from a known-good image, apply the patch for the exploited service, and restore the workload behind tightened ingress before returning to production."
+        }
+      ]
+    },
+    {
+      "name": "Lessons-Learned",
+      "steps": [
+        {
+          "id": "ll-1",
+          "name": "Reduce the attack surface",
+          "description": "Remove or firewall the exposed service, add a CPU/egress anomaly detection, and verify patch SLAs for internet-facing hosts."
+        }
+      ]
+    }
+  ]
+}
