@@ -1,0 +1,16 @@
+$ playbookforge --help
+
+usage: playbookforge [-h] [--version] {render,lint,new,coverage} ...
+
+Incident-response playbook generator and linter mapped to MITRE ATT&CK.
+
+positional arguments:
+  {render,lint,new,coverage}
+    render              render a playbook to Markdown or JSON
+    lint                lint a playbook (non-zero exit on errors)
+    new                 scaffold a starter playbook
+    coverage            list referenced ATT&CK tactics/techniques
+
+options:
+  -h, --help            show this help message and exit
+  --version             show program's version number and exit

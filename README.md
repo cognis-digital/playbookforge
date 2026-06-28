@@ -4,6 +4,72 @@ Incident-response playbook generator and linter, mapped to MITRE ATT&CK tactics 
 
 Analysts author an IR playbook as structured data — steps grouped by the standard incident-response phases (Preparation, Detection, Containment, Eradication, Recovery, Lessons-Learned), each step optionally tagged with ATT&CK technique IDs. `playbookforge` renders the playbook to clean Markdown and JSON, and **lints** it so a malformed or incomplete playbook fails your CI gate.
 
+
+<!-- cognis:example:start -->
+## 🔎 Example output
+
+Real, reproducible output from the tool — runs offline:
+
+```console
+$ playbookforge --version
+playbookforge 0.1.0
+```
+
+```console
+$ playbookforge --help
+usage: playbookforge [-h] [--version] {render,lint,new,coverage} ...
+
+Incident-response playbook generator and linter mapped to MITRE ATT&CK.
+
+positional arguments:
+  {render,lint,new,coverage}
+    render              render a playbook to Markdown or JSON
+    lint                lint a playbook (non-zero exit on errors)
+    new                 scaffold a starter playbook
+    coverage            list referenced ATT&CK tactics/techniques
+
+options:
+  -h, --help            show this help message and exit
+  --version             show program's version number and exit
+```
+
+> Blocks above are real `playbookforge` output — reproduce them from a clone.
+
+**Sample result format** _(illustrative values — run on your own data for real findings):_
+
+```
+{
+  "playbook": {
+    "title": "Example Incident Response",
+    "description": "A sample playbook for responding to incidents",
+    "tactics": [
+      {
+        "id": "T1200",
+        "name": "Initial Access",
+        "techniques": [
+          {
+            "id": "T1203",
+            "name": "Phishing"
+          }
+        ]
+      },
+      {
+        "id": "T1500",
+        "name": "Execution",
+        "techniques": [
+          {
+            "id": "T1501",
+            "name": "Command Line Interface"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+<!-- cognis:example:end -->
+
 ## Install
 
 ```bash

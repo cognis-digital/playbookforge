@@ -1,0 +1,3 @@
+$ playbookforge --version
+
+playbookforge 0.1.0
